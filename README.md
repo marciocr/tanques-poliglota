@@ -1,7 +1,7 @@
 # tanques-poliglota
 
 Um duelo de tanques para dois jogadores, inspirado no **Combat** (Atari 2600,
-1977), implementado em 7 linguagens sobre a **SDL2**. É o segundo jogo da série,
+1977), implementado em 10 linguagens sobre a **SDL2**. É o segundo jogo da série,
 depois do [pong-poliglota](https://github.com/marciocr/pong-poliglota), e segue
 as mesmas regras: mesmas constantes, mesmas funções (`update_tank`,
 `try_move`, `draw_tank`, `noise`...) e mesmo loop com física em passo fixo, sem
@@ -18,6 +18,9 @@ nenhum arquivo externo de imagem, fonte ou som.
 | Object Pascal | [`pascal/`](pascal/) | unit própria `sdl2mini.pas` (`external`)  | FPC via `build.sh` | `./build/tanques`       |
 | Perl          | [`perl/`](perl/)     | FFI::Platypus direto na `libSDL2`         | `cpanfile`         | `./tanques.pl`          |
 | Python        | [`python/`](python/) | PySDL2 (ctypes, API de baixo nível)       | `requirements.txt` | `./tanques.py`          |
+| Lua (LuaJIT)  | [`lua/`](lua/)       | FFI do LuaJIT direto na `libSDL2`         | nenhum (`luajit`)  | `./tanques.lua`         |
+| Java 25       | [`java/`](java/)     | API FFM (`java.lang.foreign`)             | Maven (`pom.xml`)  | `java -jar target/tanques.jar` |
+| C# (.NET 10)  | [`csharp/`](csharp/) | P/Invoke com `[LibraryImport]`            | `dotnet` (`.csproj`) | `dotnet run -c Release` |
 
 Cada pasta tem um `README.md` com as dependências e os comandos exatos de
 build e execução.
@@ -70,7 +73,7 @@ build e execução.
 Como o jogo não tem aleatoriedade, a mesma sequência de teclas leva ao mesmo
 estado final. Isso foi verificado com roteiros de teclas gerados
 aleatoriamente, filtrados para ter vários acertos e ricochetes nos dois modos:
-as 7 implementações terminam com posições, direções, placar e tempo
+as 10 implementações terminam com posições, direções, placar e tempo
 **idênticos até a 4ª casa decimal**. O teste revelou uma pegadinha do Free
 Pascal, documentada em [`pascal/README.md`](pascal/README.md): sem
 `{$MINFPCONSTPREC 64}`, o passo de física era calculado em precisão simples.
@@ -81,7 +84,7 @@ Tudo está nos repositórios padrão do Fedora; não é preciso RPM Fusion nem
 COPR.
 
 ```bash
-sudo dnf install gcc-c++ cmake sdl2-compat-devel rust cargo golang ldc dub fpc perl perl-FFI-Platypus perl-FFI-CheckLib python3 python3-pysdl2
+sudo dnf install gcc-c++ cmake sdl2-compat-devel rust cargo golang ldc dub fpc perl perl-FFI-Platypus perl-FFI-CheckLib python3 python3-pysdl2 luajit java-25-openjdk-devel maven dotnet-sdk-10.0
 ```
 
 ## Créditos
