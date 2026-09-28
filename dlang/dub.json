@@ -1,0 +1,11 @@
+{
+	"name": "tanques",
+	"description": "Tanques em D com SDL2 (bindbc-sdl), inspirado no Combat do Atari 2600",
+	"license": "MIT",
+	"targetType": "executable",
+	"targetName": "tanques",
+	"dependencies": {
+		"bindbc-sdl": "~>1.5.3"
+	},
+	"versions": ["SDL_2018"]
+}

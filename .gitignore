@@ -1,0 +1,19 @@
+# C++
+cpp/build/
+
+# Rust
+rust/target/
+
+# Go
+go/tanques
+
+# D
+dlang/.dub/
+dlang/tanques
+
+# Pascal
+pascal/build/
+
+# Python
+__pycache__/
+.venv/
