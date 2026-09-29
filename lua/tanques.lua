@@ -76,6 +76,21 @@ local WALLS = {
 -- para +x: duas esteiras, corpo e canhão.
 local TANK_SHAPE = { { -14, -14, 12, -7 }, { -14, 7, 12, 14 }, { -10, -7, 7, 7 }, { 0, -2, 20, 2 } }
 
+-- (cosseno, seno) das 16 direções, a cada 22,5°. Valores literais: sin/cos das
+-- bibliotecas diferem no último bit entre as linguagens, e as versões passariam
+-- a divergir. Assim também o tanque anda em linha reta nas 4 direções cardeais.
+local DIR_TABLE = {
+    [0] = { 1, 0 }, { 0.9238795325112867, 0.3826834323650898 },
+    { 0.7071067811865476, 0.7071067811865476 }, { 0.3826834323650898, 0.9238795325112867 },
+    { 0, 1 }, { -0.3826834323650898, 0.9238795325112867 },
+    { -0.7071067811865476, 0.7071067811865476 },
+    { -0.9238795325112867, 0.3826834323650898 }, { -1, 0 },
+    { -0.9238795325112867, -0.3826834323650898 }, { -0.7071067811865476, -0.7071067811865476 },
+    { -0.3826834323650898, -0.9238795325112867 }, { 0, -1 },
+    { 0.3826834323650898, -0.9238795325112867 }, { 0.7071067811865476, -0.7071067811865476 },
+    { 0.9238795325112867, -0.3826834323650898 },
+}
+
 -- Fonte 3x5 para os dígitos do placar.
 local DIGITS = {
     [0] = "111101101101111", "001001001001001", "111001111100111", "111001111001111",
@@ -212,18 +227,18 @@ function Game:update_tank(i, keys, dt)
         else
             t.rot_timer = 0
         end
-        local a = dir_angle(t.dir)
+        local dc, ds = DIR_TABLE[t.dir][1], DIR_TABLE[t.dir][2]
         if keys[c.fwd] ~= 0 then
-            try_move(t, other, math.cos(a) * TANK_SPEED * dt, math.sin(a) * TANK_SPEED * dt)
+            try_move(t, other, dc * TANK_SPEED * dt, ds * TANK_SPEED * dt)
         end
         if fire and not t.fire_prev and not t.bullet.active then
-            local bx = t.x + math.cos(a) * 20 - BULLET_SIZE / 2
-            local by = t.y + math.sin(a) * 20 - BULLET_SIZE / 2
+            local bx = t.x + dc * 20 - BULLET_SIZE / 2
+            local by = t.y + ds * 20 - BULLET_SIZE / 2
             -- Canhão encostado na parede: o tiro não sai (nasceria dentro dela).
             if not hits_wall(bx, by, BULLET_SIZE, BULLET_SIZE) then
                 t.bullet = {
                     active = true, x = bx, y = by,
-                    vx = math.cos(a) * BULLET_SPEED, vy = math.sin(a) * BULLET_SPEED,
+                    vx = dc * BULLET_SPEED, vy = ds * BULLET_SPEED,
                     life = BULLET_LIFE,
                 }
                 self:play(self.snd_shot)

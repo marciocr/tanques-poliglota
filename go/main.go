@@ -45,6 +45,20 @@ var tankShape = [][4]float64{
 	{-14, -14, 12, -7}, {-14, 7, 12, 14}, {-10, -7, 7, 7}, {0, -2, 20, 2},
 }
 
+// (cosseno, seno) das 16 direções, a cada 22,5°. Valores literais: sin/cos das
+// bibliotecas diferem no último bit entre as linguagens, e as versões passariam
+// a divergir. Assim também o tanque anda em linha reta nas 4 direções cardeais.
+var dirTable = [16][2]float64{
+	{1, 0}, {0.9238795325112867, 0.3826834323650898},
+	{0.7071067811865476, 0.7071067811865476}, {0.3826834323650898, 0.9238795325112867},
+	{0, 1}, {-0.3826834323650898, 0.9238795325112867},
+	{-0.7071067811865476, 0.7071067811865476}, {-0.9238795325112867, 0.3826834323650898},
+	{-1, 0}, {-0.9238795325112867, -0.3826834323650898},
+	{-0.7071067811865476, -0.7071067811865476}, {-0.3826834323650898, -0.9238795325112867},
+	{0, -1}, {0.3826834323650898, -0.9238795325112867},
+	{0.7071067811865476, -0.7071067811865476}, {0.9238795325112867, -0.3826834323650898},
+}
+
 // Fonte 3x5 para os dígitos do placar.
 var digits = [10]string{
 	"111101101101111", "001001001001001", "111001111100111", "111001111001111",
@@ -214,16 +228,16 @@ func (g *Game) updateTank(i int, keys []uint8, dt float64) {
 		} else {
 			t.rotTimer = 0
 		}
-		a := dirAngle(t.dir)
+		dc, ds := dirTable[t.dir][0], dirTable[t.dir][1]
 		if keys[c[0]] != 0 {
-			tryMove(t, other, math.Cos(a)*TankSpeed*dt, math.Sin(a)*TankSpeed*dt)
+			tryMove(t, other, dc*TankSpeed*dt, ds*TankSpeed*dt)
 		}
 		if fire && !t.firePrev && !t.bullet.active {
-			bx := t.x + math.Cos(a)*20 - BulletSize/2.0
-			by := t.y + math.Sin(a)*20 - BulletSize/2.0
+			bx := t.x + dc*20 - BulletSize/2.0
+			by := t.y + ds*20 - BulletSize/2.0
 			// Canhão encostado na parede: o tiro não sai (nasceria dentro dela).
 			if !hitsWall(bx, by, BulletSize, BulletSize) {
-				t.bullet = Bullet{true, bx, by, math.Cos(a) * BulletSpeed, math.Sin(a) * BulletSpeed, BulletLife}
+				t.bullet = Bullet{true, bx, by, dc * BulletSpeed, ds * BulletSpeed, BulletLife}
 				g.play(g.sndShot)
 			}
 		}
@@ -263,7 +277,7 @@ func (g *Game) updateTank(i int, keys []uint8, dt float64) {
 	if other.spin <= 0 && overlaps(b.x, b.y, BulletSize, BulletSize,
 		other.x-TankHalf, other.y-TankHalf, 2*TankHalf, 2*TankHalf) {
 		t.score++
-		l := math.Hypot(b.vx, b.vy)
+		l := math.Sqrt(b.vx*b.vx + b.vy*b.vy)
 		other.spin = SpinTime
 		other.spinStep = 0
 		other.pushX = b.vx / l * PushSpeed

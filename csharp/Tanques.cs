@@ -30,6 +30,22 @@ unsafe class Tanques
     static readonly (double X0, double Y0, double X1, double Y1)[] TankShape =
         [(-14, -14, 12, -7), (-14, 7, 12, 14), (-10, -7, 7, 7), (0, -2, 20, 2)];
 
+    // (cosseno, seno) das 16 direções, a cada 22,5°. Valores literais: sin/cos das
+    // bibliotecas diferem no último bit entre as linguagens, e as versões passariam
+    // a divergir. Assim também o tanque anda em linha reta nas 4 direções cardeais.
+    static readonly (double Cos, double Sin)[] DirTable =
+    [
+    (1, 0), (0.9238795325112867, 0.3826834323650898),
+    (0.7071067811865476, 0.7071067811865476), (0.3826834323650898, 0.9238795325112867),
+    (0, 1), (-0.3826834323650898, 0.9238795325112867),
+    (-0.7071067811865476, 0.7071067811865476), (-0.9238795325112867, 0.3826834323650898),
+    (-1, 0), (-0.9238795325112867, -0.3826834323650898),
+    (-0.7071067811865476, -0.7071067811865476), (-0.3826834323650898, -0.9238795325112867),
+    (0, -1), (0.3826834323650898, -0.9238795325112867),
+    (0.7071067811865476, -0.7071067811865476), (0.9238795325112867, -0.3826834323650898),
+    ];
+
+
     // Fonte 3x5 para os dígitos do placar.
     static readonly string[] Digits =
     [
@@ -175,12 +191,12 @@ unsafe class Tanques
                 {
                     t.RotTimer = 0;
                 }
-                double a = DirAngle(t.Dir);
-                if (keys[c.Fwd] != 0) TryMove(t, other, Math.Cos(a) * TANK_SPEED * dt, Math.Sin(a) * TANK_SPEED * dt);
+                var (dc, ds) = DirTable[t.Dir];
+                if (keys[c.Fwd] != 0) TryMove(t, other, dc * TANK_SPEED * dt, ds * TANK_SPEED * dt);
                 if (fire && !t.FirePrev && !t.Bullet.Active)
                 {
-                    double bx = t.X + Math.Cos(a) * 20 - BULLET_SIZE / 2.0;
-                    double by = t.Y + Math.Sin(a) * 20 - BULLET_SIZE / 2.0;
+                    double bx = t.X + dc * 20 - BULLET_SIZE / 2.0;
+                    double by = t.Y + ds * 20 - BULLET_SIZE / 2.0;
                     // Canhão encostado na parede: o tiro não sai (nasceria dentro dela).
                     if (!HitsWall(bx, by, BULLET_SIZE, BULLET_SIZE))
                     {
@@ -188,8 +204,8 @@ unsafe class Tanques
                         nb.Active = true;
                         nb.X = bx;
                         nb.Y = by;
-                        nb.Vx = Math.Cos(a) * BULLET_SPEED;
-                        nb.Vy = Math.Sin(a) * BULLET_SPEED;
+                        nb.Vx = dc * BULLET_SPEED;
+                        nb.Vy = ds * BULLET_SPEED;
                         nb.Life = BULLET_LIFE;
                         play(sndShot);
                     }

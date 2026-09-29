@@ -1,0 +1,3 @@
+x=217.9479 y=334.5791 dir=14 score=3 spin=0.0000 bullet=1
+x=528.0059 y=242.9868 dir=9 score=0 spin=-0.0083 bullet=1
+mode=1 time=109.6083

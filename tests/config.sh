@@ -1,0 +1,2 @@
+GAME=tanques
+CLASS=Tanques

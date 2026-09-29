@@ -38,6 +38,20 @@ const TANK_SHAPE: [(f64, f64, f64, f64); 4] = [
     (-14.0, -14.0, 12.0, -7.0), (-14.0, 7.0, 12.0, 14.0), (-10.0, -7.0, 7.0, 7.0), (0.0, -2.0, 20.0, 2.0),
 ];
 
+// (cosseno, seno) das 16 direções, a cada 22,5°. Valores literais: sin/cos das
+// bibliotecas diferem no último bit entre as linguagens, e as versões passariam
+// a divergir. Assim também o tanque anda em linha reta nas 4 direções cardeais.
+const DIR_TABLE: [(f64, f64); 16] = [
+    (1.0, 0.0), (0.9238795325112867, 0.3826834323650898),
+    (0.7071067811865476, 0.7071067811865476), (0.3826834323650898, 0.9238795325112867),
+    (0.0, 1.0), (-0.3826834323650898, 0.9238795325112867),
+    (-0.7071067811865476, 0.7071067811865476), (-0.9238795325112867, 0.3826834323650898),
+    (-1.0, 0.0), (-0.9238795325112867, -0.3826834323650898),
+    (-0.7071067811865476, -0.7071067811865476), (-0.3826834323650898, -0.9238795325112867),
+    (0.0, -1.0), (0.3826834323650898, -0.9238795325112867),
+    (0.7071067811865476, -0.7071067811865476), (0.9238795325112867, -0.3826834323650898),
+];
+
 // Fonte 3x5 para os dígitos do placar.
 const DIGITS: [&str; 10] = [
     "111101101101111", "001001001001001", "111001111100111", "111001111001111",
@@ -217,21 +231,21 @@ impl Game {
             } else {
                 t.rot_timer = 0.0;
             }
-            let a = dir_angle(t.dir);
+            let (dc, ds) = DIR_TABLE[t.dir as usize];
             if keys.is_scancode_pressed(c.fwd) {
-                Self::try_move(t, other, a.cos() * TANK_SPEED * dt, a.sin() * TANK_SPEED * dt);
+                Self::try_move(t, other, dc * TANK_SPEED * dt, ds * TANK_SPEED * dt);
             }
             if fire && !t.fire_prev && !t.bullet.active {
-                let bx = t.x + a.cos() * 20.0 - BULLET_SIZE / 2.0;
-                let by = t.y + a.sin() * 20.0 - BULLET_SIZE / 2.0;
+                let bx = t.x + dc * 20.0 - BULLET_SIZE / 2.0;
+                let by = t.y + ds * 20.0 - BULLET_SIZE / 2.0;
                 // Canhão encostado na parede: o tiro não sai (nasceria dentro dela).
                 if !hits_wall((bx, by, BULLET_SIZE, BULLET_SIZE)) {
                     t.bullet = Bullet {
                         active: true,
                         x: bx,
                         y: by,
-                        vx: a.cos() * BULLET_SPEED,
-                        vy: a.sin() * BULLET_SPEED,
+                        vx: dc * BULLET_SPEED,
+                        vy: ds * BULLET_SPEED,
                         life: BULLET_LIFE,
                     };
                     snd.play(&snd.shot);
@@ -272,7 +286,7 @@ impl Game {
         }
         if other.spin <= 0.0 && overlaps((b.x, b.y, BULLET_SIZE, BULLET_SIZE), tank_box(other.x, other.y)) {
             t.score += 1;
-            let len = b.vx.hypot(b.vy);
+            let len = (b.vx * b.vx + b.vy * b.vy).sqrt();
             other.spin = SPIN_TIME;
             other.spin_step = 0.0;
             other.push_x = b.vx / len * PUSH_SPEED;

@@ -3,9 +3,9 @@
 program tanques;
 
 {$mode objfpc}{$H+}
-{ Sem isto, o FPC 3.2+ dá a cada constante real o menor tipo que representa
-  seus literais: STEP = 1.0 / 120.0 seria calculado em Single (32 bits) e a
-  física divergiria das outras linguagens, que usam Double. }
+{ O FPC 3.2+ calcula a expressão de uma constante real no menor tipo que
+  representa seus literais: 1.0 / 120.0 sairia em Single (32 bits). Esta diretiva
+  faz as constantes serem avaliadas, no mínimo, em precisão dupla. }
 {$MINFPCONSTPREC 64}
 
 uses
@@ -17,16 +17,19 @@ const
   TANK_GRID = 22;  { tanque desenhado em 22x22 blocos de 2px }
   TANK_CELL = 2;
   TANK_HALF = 12.0;  { hitbox 24x24 }
-  TANK_SPEED = 90.0;  { px/s }
-  ROT_TIME = 0.09;  { s por passo de giro (16 direções) }
-  BULLET_SPEED = 320.0;
+  { Constantes reais como Double tipado. Uma constante sem tipo (X = 1.07) é
+    Extended: ao multiplicá-la por um Double o FPC faz a conta em x87, com 80
+    bits, e o resultado difere no último bit das outras linguagens. }
+  TANK_SPEED: Double = 90.0;  { px/s }
+  ROT_TIME: Double = 0.09;  { s por passo de giro (16 direções) }
+  BULLET_SPEED: Double = 320.0;
   BULLET_SIZE = 4;
-  BULLET_LIFE = 1.6;
-  SPIN_TIME = 1.0;
-  SPIN_STEP = 0.04;
-  PUSH_SPEED = 110.0;
-  MATCH_TIME = 136.0;  { 2:16, como no Combat }
-  STEP = 1.0 / 120.0;
+  BULLET_LIFE: Double = 1.6;
+  SPIN_TIME: Double = 1.0;
+  SPIN_STEP: Double = 0.04;
+  PUSH_SPEED: Double = 110.0;
+  MATCH_TIME: Double = 136.0;  { 2:16, como no Combat }
+  STEP: Double = 1.0 / 120.0;
   RATE = 44100;
 
   { Bordas da arena e obstáculos (x, y, w, h), simétricos nos dois eixos. }
@@ -39,6 +42,19 @@ const
     para +x: duas esteiras, corpo e canhão. }
   TANK_SHAPE: array[0..3] of array[0..3] of Double = (
     (-14, -14, 12, -7), (-14, 7, 12, 14), (-10, -7, 7, 7), (0, -2, 20, 2));
+
+  { (cosseno, seno) das 16 direções, a cada 22,5°. Valores literais: sin/cos das
+   bibliotecas diferem no último bit entre as linguagens, e as versões passariam
+   a divergir. Assim também o tanque anda em linha reta nas 4 direções cardeais. }
+  DIR_TABLE: array[0..15, 0..1] of Double = (
+    (1, 0), (0.9238795325112867, 0.3826834323650898),
+    (0.7071067811865476, 0.7071067811865476), (0.3826834323650898, 0.9238795325112867),
+    (0, 1), (-0.3826834323650898, 0.9238795325112867),
+    (-0.7071067811865476, 0.7071067811865476), (-0.9238795325112867, 0.3826834323650898),
+    (-1, 0), (-0.9238795325112867, -0.3826834323650898),
+    (-0.7071067811865476, -0.7071067811865476), (-0.3826834323650898, -0.9238795325112867),
+    (0, -1), (0.3826834323650898, -0.9238795325112867),
+    (0.7071067811865476, -0.7071067811865476), (0.9238795325112867, -0.3826834323650898));
 
   { Fonte 3x5 para os dígitos do placar. }
   DIGITS: array[0..9] of string[15] = (
@@ -208,7 +224,7 @@ var
   C: TControls;
   Fire: Boolean;
   Turn: Integer;
-  A, Len, BX, BY: Double;
+  DC, DS, Len, BX, BY: Double;
 begin
   C := CONTROLS[I];
   Fire := Keys[C.Fire] <> 0;
@@ -240,21 +256,22 @@ begin
       end
       else
         RotTimer := 0;
-      A := DirAngle(Dir);
+      DC := DIR_TABLE[Dir, 0];
+      DS := DIR_TABLE[Dir, 1];
       if Keys[C.Fwd] <> 0 then
-        TryMove(Tanks[I], Tanks[1 - I], Cos(A) * TANK_SPEED * Dt, Sin(A) * TANK_SPEED * Dt);
+        TryMove(Tanks[I], Tanks[1 - I], DC * TANK_SPEED * Dt, DS * TANK_SPEED * Dt);
       if Fire and not FirePrev and not Bullet.Active then
       begin
-        BX := X + Cos(A) * 20 - BULLET_SIZE / 2;
-        BY := Y + Sin(A) * 20 - BULLET_SIZE / 2;
+        BX := X + DC * 20 - BULLET_SIZE / 2;
+        BY := Y + DS * 20 - BULLET_SIZE / 2;
         { Canhão encostado na parede: o tiro não sai (nasceria dentro dela). }
         if not HitsWall(BX, BY, BULLET_SIZE, BULLET_SIZE) then
         begin
           Bullet.Active := True;
           Bullet.X := BX;
           Bullet.Y := BY;
-          Bullet.VX := Cos(A) * BULLET_SPEED;
-          Bullet.VY := Sin(A) * BULLET_SPEED;
+          Bullet.VX := DC * BULLET_SPEED;
+          Bullet.VY := DS * BULLET_SPEED;
           Bullet.Life := BULLET_LIFE;
           Play(SndShot);
         end;
@@ -301,7 +318,7 @@ begin
       Tanks[1 - I].X - TANK_HALF, Tanks[1 - I].Y - TANK_HALF, 2 * TANK_HALF, 2 * TANK_HALF) then
     begin
       Inc(Tanks[I].Score);
-      Len := Hypot(VX, VY);
+      Len := Sqrt(VX * VX + VY * VY);
       Tanks[1 - I].Spin := SPIN_TIME;
       Tanks[1 - I].SpinStep := 0;
       Tanks[1 - I].PushX := VX / Len * PUSH_SPEED;

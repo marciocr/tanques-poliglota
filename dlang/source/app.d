@@ -5,7 +5,7 @@ module app;
 import bindbc.sdl;
 import std.algorithm : any, min;
 import std.conv : to;
-import std.math : cos, fmod, hypot, sin, PI;
+import std.math : cos, fmod, sin, sqrt, PI;
 import std.stdio : stderr;
 
 enum W = 640, H = 480;
@@ -32,6 +32,20 @@ immutable SDL_Rect[] WALLS = [
 // para +x: duas esteiras, corpo e canhão.
 immutable double[4][] TANK_SHAPE = [
     [-14, -14, 12, -7], [-14, 7, 12, 14], [-10, -7, 7, 7], [0, -2, 20, 2],
+];
+
+// (cosseno, seno) das 16 direções, a cada 22,5°. Valores literais: sin/cos das
+// bibliotecas diferem no último bit entre as linguagens, e as versões passariam
+// a divergir. Assim também o tanque anda em linha reta nas 4 direções cardeais.
+immutable double[2][16] DIR_TABLE = [
+    [1, 0], [0.9238795325112867, 0.3826834323650898],
+    [0.7071067811865476, 0.7071067811865476], [0.3826834323650898, 0.9238795325112867],
+    [0, 1], [-0.3826834323650898, 0.9238795325112867],
+    [-0.7071067811865476, 0.7071067811865476], [-0.9238795325112867, 0.3826834323650898],
+    [-1, 0], [-0.9238795325112867, -0.3826834323650898],
+    [-0.7071067811865476, -0.7071067811865476], [-0.3826834323650898, -0.9238795325112867],
+    [0, -1], [0.3826834323650898, -0.9238795325112867],
+    [0.7071067811865476, -0.7071067811865476], [0.9238795325112867, -0.3826834323650898],
 ];
 
 // Fonte 3x5 para os dígitos do placar.
@@ -183,15 +197,15 @@ struct Game
             }
             else
                 t.rotTimer = 0;
-            const a = dirAngle(t.dir);
-            if (keys[c.fwd]) tryMove(*t, *other, cos(a) * TANK_SPEED * dt, sin(a) * TANK_SPEED * dt);
+            const dc = DIR_TABLE[t.dir][0], ds = DIR_TABLE[t.dir][1];
+            if (keys[c.fwd]) tryMove(*t, *other, dc * TANK_SPEED * dt, ds * TANK_SPEED * dt);
             if (fire && !t.firePrev && !t.bullet.active)
             {
-                const bx = t.x + cos(a) * 20 - BULLET_SIZE / 2.0, by = t.y + sin(a) * 20 - BULLET_SIZE / 2.0;
+                const bx = t.x + dc * 20 - BULLET_SIZE / 2.0, by = t.y + ds * 20 - BULLET_SIZE / 2.0;
                 // Canhão encostado na parede: o tiro não sai (nasceria dentro dela).
                 if (!hitsWall(bx, by, BULLET_SIZE, BULLET_SIZE))
                 {
-                    t.bullet = Bullet(true, bx, by, cos(a) * BULLET_SPEED, sin(a) * BULLET_SPEED, BULLET_LIFE);
+                    t.bullet = Bullet(true, bx, by, dc * BULLET_SPEED, ds * BULLET_SPEED, BULLET_LIFE);
                     play(sndShot);
                 }
             }
@@ -223,7 +237,7 @@ struct Game
                                          other.y - TANK_HALF, 2 * TANK_HALF, 2 * TANK_HALF))
         {
             ++t.score;
-            const len = hypot(b.vx, b.vy);
+            const len = sqrt(b.vx * b.vx + b.vy * b.vy);
             other.spin = SPIN_TIME;
             other.spinStep = 0;
             other.pushX = b.vx / len * PUSH_SPEED;

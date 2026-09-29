@@ -34,6 +34,20 @@ WALLS = [
 # para +x: duas esteiras, corpo e canhão.
 TANK_SHAPE = [(-14, -14, 12, -7), (-14, 7, 12, 14), (-10, -7, 7, 7), (0, -2, 20, 2)]
 
+# (cosseno, seno) das 16 direções, a cada 22,5°. Valores literais: sin/cos das
+# bibliotecas diferem no último bit entre as linguagens, e as versões passariam
+# a divergir. Assim também o tanque anda em linha reta nas 4 direções cardeais.
+DIR_TABLE = [
+    (1, 0), (0.9238795325112867, 0.3826834323650898),
+    (0.7071067811865476, 0.7071067811865476), (0.3826834323650898, 0.9238795325112867),
+    (0, 1), (-0.3826834323650898, 0.9238795325112867),
+    (-0.7071067811865476, 0.7071067811865476), (-0.9238795325112867, 0.3826834323650898),
+    (-1, 0), (-0.9238795325112867, -0.3826834323650898),
+    (-0.7071067811865476, -0.7071067811865476), (-0.3826834323650898, -0.9238795325112867),
+    (0, -1), (0.3826834323650898, -0.9238795325112867),
+    (0.7071067811865476, -0.7071067811865476), (0.9238795325112867, -0.3826834323650898),
+]
+
 # Fonte 3x5 para os dígitos do placar.
 DIGITS = [
     "111101101101111", "001001001001001", "111001111100111", "111001111001111",
@@ -165,17 +179,17 @@ class Game:
                     t.rot_timer += ROT_TIME
             else:
                 t.rot_timer = 0.0
-            a = dir_angle(t.dir)
+            dc, ds = DIR_TABLE[t.dir]
             if keys[fwd]:
-                self.try_move(t, other, math.cos(a) * TANK_SPEED * dt, math.sin(a) * TANK_SPEED * dt)
+                self.try_move(t, other, dc * TANK_SPEED * dt, ds * TANK_SPEED * dt)
             if fire and not t.fire_prev and not t.bullet.active:
-                bx = t.x + math.cos(a) * 20 - BULLET_SIZE / 2
-                by = t.y + math.sin(a) * 20 - BULLET_SIZE / 2
+                bx = t.x + dc * 20 - BULLET_SIZE / 2
+                by = t.y + ds * 20 - BULLET_SIZE / 2
                 # Canhão encostado na parede: o tiro não sai (nasceria dentro dela).
                 if not hits_wall(bx, by, BULLET_SIZE, BULLET_SIZE):
                     b = t.bullet
                     b.active, b.x, b.y = True, bx, by
-                    b.vx, b.vy = math.cos(a) * BULLET_SPEED, math.sin(a) * BULLET_SPEED
+                    b.vx, b.vy = dc * BULLET_SPEED, ds * BULLET_SPEED
                     b.life = BULLET_LIFE
                     self.play(self.snd_shot)
         t.fire_prev = fire
@@ -207,7 +221,7 @@ class Game:
         if other.spin <= 0 and overlaps(b.x, b.y, BULLET_SIZE, BULLET_SIZE, other.x - TANK_HALF,
                                         other.y - TANK_HALF, 2 * TANK_HALF, 2 * TANK_HALF):
             t.score += 1
-            length = math.hypot(b.vx, b.vy)
+            length = math.sqrt(b.vx * b.vx + b.vy * b.vy)
             other.spin = SPIN_TIME
             other.spin_step = 0.0
             other.push_x = b.vx / length * PUSH_SPEED

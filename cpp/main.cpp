@@ -40,6 +40,20 @@ const Box TANK_SHAPE[] = {
     {-14, -14, 12, -7}, {-14, 7, 12, 14}, {-10, -7, 7, 7}, {0, -2, 20, 2},
 };
 
+// (cosseno, seno) das 16 direções, a cada 22,5°. Valores literais: sin/cos das
+// bibliotecas diferem no último bit entre as linguagens, e as versões passariam
+// a divergir. Assim também o tanque anda em linha reta nas 4 direções cardeais.
+const double DIR_TABLE[16][2] = {
+    {1, 0}, {0.9238795325112867, 0.3826834323650898},
+    {0.7071067811865476, 0.7071067811865476}, {0.3826834323650898, 0.9238795325112867},
+    {0, 1}, {-0.3826834323650898, 0.9238795325112867},
+    {-0.7071067811865476, 0.7071067811865476}, {-0.9238795325112867, 0.3826834323650898},
+    {-1, 0}, {-0.9238795325112867, -0.3826834323650898},
+    {-0.7071067811865476, -0.7071067811865476}, {-0.3826834323650898, -0.9238795325112867},
+    {0, -1}, {0.3826834323650898, -0.9238795325112867},
+    {0.7071067811865476, -0.7071067811865476}, {0.9238795325112867, -0.3826834323650898},
+};
+
 // Fonte 3x5 para os dígitos do placar.
 const char* const DIGITS[10] = {
     "111101101101111", "001001001001001", "111001111100111", "111001111001111",
@@ -175,14 +189,14 @@ struct Game {
             } else {
                 t.rot_timer = 0;
             }
-            const double a = dir_angle(t.dir);
-            if (keys[c.fwd]) try_move(t, other, std::cos(a) * TANK_SPEED * dt, std::sin(a) * TANK_SPEED * dt);
+            const double dc = DIR_TABLE[t.dir][0], ds = DIR_TABLE[t.dir][1];
+            if (keys[c.fwd]) try_move(t, other, dc * TANK_SPEED * dt, ds * TANK_SPEED * dt);
             if (fire && !t.fire_prev && !t.bullet.active) {
-                const double bx = t.x + std::cos(a) * 20 - BULLET_SIZE / 2.0;
-                const double by = t.y + std::sin(a) * 20 - BULLET_SIZE / 2.0;
+                const double bx = t.x + dc * 20 - BULLET_SIZE / 2.0;
+                const double by = t.y + ds * 20 - BULLET_SIZE / 2.0;
                 // Canhão encostado na parede: o tiro não sai (nasceria dentro dela).
                 if (!hits_wall(bx, by, BULLET_SIZE, BULLET_SIZE)) {
-                    t.bullet = Bullet{true, bx, by, std::cos(a) * BULLET_SPEED, std::sin(a) * BULLET_SPEED,
+                    t.bullet = Bullet{true, bx, by, dc * BULLET_SPEED, ds * BULLET_SPEED,
                                       BULLET_LIFE};
                     play(snd_shot);
                 }
@@ -208,7 +222,7 @@ struct Game {
         if (other.spin <= 0 && overlaps(b.x, b.y, BULLET_SIZE, BULLET_SIZE, other.x - TANK_HALF,
                                         other.y - TANK_HALF, 2 * TANK_HALF, 2 * TANK_HALF)) {
             ++t.score;
-            const double len = std::hypot(b.vx, b.vy);
+            const double len = std::sqrt(b.vx * b.vx + b.vy * b.vy);
             other.spin = SPIN_TIME;
             other.spin_step = 0;
             other.push_x = b.vx / len * PUSH_SPEED;

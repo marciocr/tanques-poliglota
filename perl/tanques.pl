@@ -52,6 +52,20 @@ my @WALLS = (
 # para +x: duas esteiras, corpo e canhão.
 my @TANK_SHAPE = ([-14, -14, 12, -7], [-14, 7, 12, 14], [-10, -7, 7, 7], [0, -2, 20, 2]);
 
+# (cosseno, seno) das 16 direções, a cada 22,5°. Valores literais: sin/cos das
+# bibliotecas diferem no último bit entre as linguagens, e as versões passariam
+# a divergir. Assim também o tanque anda em linha reta nas 4 direções cardeais.
+my @DIR_TABLE = (
+    [1, 0], [0.9238795325112867, 0.3826834323650898],
+    [0.7071067811865476, 0.7071067811865476], [0.3826834323650898, 0.9238795325112867],
+    [0, 1], [-0.3826834323650898, 0.9238795325112867],
+    [-0.7071067811865476, 0.7071067811865476], [-0.9238795325112867, 0.3826834323650898],
+    [-1, 0], [-0.9238795325112867, -0.3826834323650898],
+    [-0.7071067811865476, -0.7071067811865476], [-0.3826834323650898, -0.9238795325112867],
+    [0, -1], [0.3826834323650898, -0.9238795325112867],
+    [0.7071067811865476, -0.7071067811865476], [0.9238795325112867, -0.3826834323650898],
+);
+
 # Fonte 3x5 para os dígitos do placar.
 my @DIGITS = qw(
     111101101101111 001001001001001 111001111100111 111001111001111
@@ -209,16 +223,16 @@ sub update_tank {
         else {
             $t->{rot_timer} = 0;
         }
-        my $a = dir_angle($t->{dir});
-        try_move($t, $other, cos($a) * TANK_SPEED * $dt, sin($a) * TANK_SPEED * $dt) if $keys->[$c->{fwd}];
+        my ($dc, $ds) = @{ $DIR_TABLE[$t->{dir}] };
+        try_move($t, $other, $dc * TANK_SPEED * $dt, $ds * TANK_SPEED * $dt) if $keys->[$c->{fwd}];
         if ($fire && !$t->{fire_prev} && !$t->{bullet}{active}) {
-            my $bx = $t->{x} + cos($a) * 20 - BULLET_SIZE / 2;
-            my $by = $t->{y} + sin($a) * 20 - BULLET_SIZE / 2;
+            my $bx = $t->{x} + $dc * 20 - BULLET_SIZE / 2;
+            my $by = $t->{y} + $ds * 20 - BULLET_SIZE / 2;
             # Canhão encostado na parede: o tiro não sai (nasceria dentro dela).
             unless (hits_wall($bx, $by, BULLET_SIZE, BULLET_SIZE)) {
                 $t->{bullet} = {
                     active => 1, x => $bx, y => $by,
-                    vx => cos($a) * BULLET_SPEED, vy => sin($a) * BULLET_SPEED,
+                    vx => $dc * BULLET_SPEED, vy => $ds * BULLET_SPEED,
                     life => BULLET_LIFE,
                 };
                 play('shot');

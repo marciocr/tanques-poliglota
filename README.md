@@ -1,5 +1,7 @@
 # tanques-poliglota
 
+[![testes](https://github.com/marciocr/tanques-poliglota/actions/workflows/test.yml/badge.svg)](https://github.com/marciocr/tanques-poliglota/actions/workflows/test.yml)
+
 Um duelo de tanques para dois jogadores, inspirado no **Combat** (Atari 2600,
 1977), implementado em 10 linguagens sobre a **SDL2**. É o segundo jogo da série,
 depois do [pong-poliglota](https://github.com/marciocr/pong-poliglota), e segue
@@ -71,12 +73,34 @@ build e execução.
 ## Equivalência entre as versões
 
 Como o jogo não tem aleatoriedade, a mesma sequência de teclas leva ao mesmo
-estado final. Isso foi verificado com roteiros de teclas gerados
-aleatoriamente, filtrados para ter vários acertos e ricochetes nos dois modos:
-as 10 implementações terminam com posições, direções, placar e tempo
-**idênticos até a 4ª casa decimal**. O teste revelou uma pegadinha do Free
-Pascal, documentada em [`pascal/README.md`](pascal/README.md): sem
-`{$MINFPCONSTPREC 64}`, o passo de física era calculado em precisão simples.
+estado final. O `make test` aplica 7 roteiros às 10 versões (os dois modos,
+tiros, acertos com empurrão, ricochetes e uma partida inteira até o fim) e exige
+resultados **idênticos até a 4ª casa decimal**. Detalhes em
+[`tests/README.md`](tests/README.md).
+
+Para chegar a isso foi preciso eliminar as diferenças de ponto flutuante entre as
+linguagens:
+
+- **Direções:** as 16 direções vêm de uma tabela com senos e cossenos escritos
+  como literais. O `sin`/`cos` de cada linguagem difere no último bit, e o tanque
+  também anda em linha reta exata nas 4 direções cardeais.
+- **Comprimento do empurrão:** `hypot` é implementado de formas diferentes em cada
+  biblioteca, e virou `sqrt(x*x + y*y)`, que o IEEE 754 exige arredondado
+  corretamente.
+- **Pascal:** as constantes reais são `Double` tipado, porque no FPC uma constante
+  sem tipo é `Extended` (veja [`pascal/README.md`](pascal/README.md)).
+
+## Testes
+
+```bash
+make build   # compila as 10 versões, cada uma com o seu build system
+make test    # equivalência entre as 10 versões, sem abrir janela
+```
+
+O teste aplica roteiros de teclas à lógica **real** de cada versão e exige que o
+estado final seja idêntico, byte a byte, ao de [`tests/expected/`](tests/expected/).
+O CI do GitHub Actions roda isso para cada linguagem a cada push. Detalhes em
+[`tests/README.md`](tests/README.md).
 
 ## Dependências de sistema (Fedora)
 
